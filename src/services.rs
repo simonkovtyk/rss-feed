@@ -1,9 +1,8 @@
-use mongodb::{Database, bson::doc};
 use sqlx::{Pool, Postgres};
 
 use crate::{models::{Channel, Post}, utils::{map_channel, map_post}};
 
-pub async fn update_channel (pool: &Pool<Postgres>, rss_channel: rss::Channel) -> Channel {
+pub async fn update_channel (pool: &Pool<Postgres>, rss_channel: rss::Channel) -> Option<Channel> {
   let mut channel = map_channel(rss_channel);
 
   let result = sqlx::query_as::<_, Channel>("SELECT * FROM channels WHERE checksum = $1")
@@ -14,19 +13,23 @@ pub async fn update_channel (pool: &Pool<Postgres>, rss_channel: rss::Channel) -
 
   if let Some(result_inner) = result {
     channel.id = result_inner.id;
-    return channel;
+    return Some(channel);
   }
 
-  let row: (i64,) = sqlx::query_as("INSERT INTO channels (name, checksum) VALUES ($1, $2) RETURNING id")
+  let row: Option<(i64,)> = sqlx::query_as("INSERT INTO channels (name, image_url, checksum) VALUES ($1, $2, $3) RETURNING id")
     .bind(&channel.name)
+    .bind(&channel.image_url)
     .bind(&channel.checksum)
     .fetch_one(pool)
     .await
-    .ok()
-    .expect("Could not insert Channel");
+    .ok();
 
-  channel.id = Some(row.0);
-  return channel;
+  if row.is_none() {
+    return None;
+  }
+
+  channel.id = Some(row.unwrap().0);
+  return Some(channel);
 }
 
 // Gets distinct items as side-effect
@@ -42,13 +45,10 @@ pub async fn update_posts (pool: &Pool<Postgres>, rss_items: Vec<rss::Item>, cha
       .fetch_one(pool)
       .await;
 
-    if let Ok(e) = result {
-      println!("Found matching checksum of: {:?}", e);
+    if result.is_ok() {
       continue;
     }
 
-    println!("Not found matching of: {:?}", mapped.channel_id);
-    
     sqlx::query_as::<_, Post>("INSERT INTO posts (title, link, pub_date, content, checksum, channel_id) VALUES ($1, $2, $3, $4, $5, $6)")
       .bind(&mapped.title)
       .bind(&mapped.link)

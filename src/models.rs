@@ -1,6 +1,7 @@
-#[derive(serde::Serialize, serde::Deserialize, sqlx::FromRow)]
+#[derive(serde::Serialize, serde::Deserialize, sqlx::FromRow, Debug)]
 pub struct Channel {
   pub id: Option<i64>,
+  pub image_url: Option<String>,
   pub name: String,
   pub checksum: String
 }

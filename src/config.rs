@@ -1,28 +1,30 @@
-use std::fs;
+use std::{fs, process};
 
 use serde::{Deserialize, Serialize};
 
-#[derive(Serialize, Deserialize)]
+use crate::{pretty::log_error, webhooks::discord::config::DiscordConfig};
+
+#[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct Rss {
   pub url: String,
   pub interval: u64,
-  pub discord_webhook: Option<DiscordWebhook>
+  pub discord: Option<DiscordConfig>
 }
 
-#[derive(Serialize, Deserialize)]
-pub struct DiscordWebhook {
-  pub id: u32,
-  pub token: u32
-}
-
-#[derive(Serialize, Deserialize)]
+#[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct Config {
   pub db: String,
   pub rss: Vec<Rss>
 }
 
 pub fn get_config (path: &str) -> Config {
-  let data = fs::read_to_string(path).expect("No config file present");
+  let data = fs::read_to_string(path).unwrap_or_else(|err| {
+    log_error(err.to_string());
+    process::exit(1);
+  });
 
-  return serde_json::from_str(&data).expect("Could not parse config");
+  return serde_json::from_str(&data).unwrap_or_else(|err| {
+    log_error(err.to_string());
+    process::exit(1)
+  });
 }
