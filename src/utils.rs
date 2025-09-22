@@ -21,9 +21,6 @@ pub fn map_channel (channel: rss::Channel) -> Channel {
 
 pub fn map_post (item: rss::Item, channel_id: i64) -> Post {
   let content = if let Some(item_content) = item.content {
-    println!("---------");
-    println!("{}", item_content);
-
     let text = html2text::from_read(item_content.as_bytes(), usize::MAX);
 
     if let Ok(inner_text) = text && inner_text != "None\n" {
@@ -34,9 +31,6 @@ pub fn map_post (item: rss::Item, channel_id: i64) -> Post {
   } else {
     None
   };
-
-      println!("---------");
-
 
   let mut post = Post {
     title: item.title,
