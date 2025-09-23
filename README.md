@@ -27,7 +27,7 @@ Feeder can be easily integrated into your workflows and applications.
 
 ✅ **Discord:** Configure and call webhooks with your personal styled messages (no branding is done by me).
 
-*Currently only Discord is supported, but I am working on Telegram. If you are still missing a integration, [consider creating a feature-request or pull-request](#contributing)*
+*Currently only Discord is supported, but I am working on Telegram. If you are still missing an integration, [consider creating a feature-request or pull-request](#contributing)*
 
 ## Installation
 
@@ -35,7 +35,7 @@ First, you need a build either from the [releases](../../releases/latest) or by 
 
 A PostgreSQL Database is also required.
 
-Feeder will take care of the database and creates everything in there for you, so no maintainance needed.
+Feeder will take care of the database and creates everything in there for you, so no maintenance needed.
 
 ## Usage
 ### Configuration
@@ -48,7 +48,7 @@ The configuration is on a per RSS-Channel basis, to provide more flexibility for
   "db": "<<<YOUR POSTGRESQL CONNECTION STRING HERE>>",
   "rss": [
     {
-      "url": "http://newsfeed.zeit.de/index",
+      "url": "http://example.com/feed", // THE CHANNEL YOU WANT TO RECEIVE
       "discord": {
         "webhook": {
           "id": 1234, // YOUR WEBHOOK ID
