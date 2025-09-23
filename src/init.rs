@@ -5,6 +5,7 @@ pub async fn init_db (pool: &Pool<Postgres>) {
     CREATE TABLE IF NOT EXISTS public.channels (
       id bigserial NOT NULL,
       name text NULL,
+      image_url text NULL,
       checksum varchar NOT NULL
     );
   ")
