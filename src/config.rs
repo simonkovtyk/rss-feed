@@ -7,7 +7,7 @@ use crate::{pretty::log_error, webhooks::discord::config::DiscordConfig};
 #[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct Rss {
   pub url: String,
-  pub interval: u64,
+  pub interval: Option<u64>,
   pub discord: Option<DiscordConfig>
 }
 

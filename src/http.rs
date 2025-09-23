@@ -1,8 +1,9 @@
 use anyhow::{Result, Error};
-use reqwest::header::{HeaderMap, HeaderValue};
+use reqwest::{header::{HeaderMap, HeaderValue}, Response};
 
-pub async fn get_rss (url: &str) -> Result<bytes::Bytes, Error> {
+pub fn get_spoof_headers () -> HeaderMap {
   let mut headers = HeaderMap::new();
+
   headers.insert("User-Agent", HeaderValue::from_static(
     "Mozilla/5.0 (X11; Linux x86_64; rv:143.0) Gecko/20100101 Firefox/143.0"
   ));
@@ -14,13 +15,25 @@ pub async fn get_rss (url: &str) -> Result<bytes::Bytes, Error> {
   headers.insert("Connection", HeaderValue::from_static("keep-alive"));
   headers.insert("Upgrade-Insecure-Requests", HeaderValue::from_static("1"));
 
+  headers
+}
+
+pub async fn get_rss (url: &str, last_modified: Option<String>) -> Result<Response, Error> {
+  let mut spoof_headers = get_spoof_headers();
+
+  if let Some(last_modified) = last_modified {
+    let last_modified_header = HeaderValue::from_str(last_modified.as_str());
+
+    if let Ok(last_modified_header_value) = last_modified_header {
+      spoof_headers.insert("If-Modified-Since", last_modified_header_value);
+    }
+  }
+
   let client = reqwest::Client::new();
-  let bytes = client.get(url)
-    .headers(headers)
+  let response = client.get(url)
+    .headers(spoof_headers)
     .send()
-    .await?
-    .bytes()
     .await?;
 
-  return Ok(bytes);
+  Ok(response)
 }

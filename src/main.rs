@@ -1,9 +1,9 @@
 use std::{future::{self, Pending}, process, time::Duration};
+use reqwest::StatusCode;
 use rss;
 use clap::Parser;
 use sqlx::postgres::PgPoolOptions;
-use tokio::{task, time};
-
+use tokio::{task, time::{self, Instant}};
 
 mod config;
 mod env;
@@ -17,6 +17,9 @@ mod init;
 mod pretty;
 
 use crate::{config::get_config, http::get_rss, init::init_db, pretty::{get_header, log_error, log_info, log_warning}, services::{update_channel, update_posts}, webhooks::discord::{api::send_discord_webhook, utils::is_discord_activated}};
+
+// seconds btw
+const DEFAULT_INTERVAL: u64 = 3600;
 
 #[tokio::main]
 async fn main() -> () {
@@ -45,13 +48,51 @@ async fn main() -> () {
   for rss in config.rss {
     let pool = pool.clone();
     task::spawn(async move {
-      let sleep = Duration::from_millis(rss.interval);
+      // Get initial sleep. It can be only the defined interval or the default interval
+      let mut sleep = Duration::from_secs(
+        rss
+          .interval
+          .unwrap_or(DEFAULT_INTERVAL)
+      );
+      let mut last_modified = None;
 
       loop {
-        let rss_content = get_rss(&rss.url).await;
-        
-        if rss_content.is_err() {
+        let start_time = Instant::now();
+        let rss_response = get_rss(&rss.url, last_modified.clone()).await;
+
+        if rss_response.is_err() {
           log_warning(format!("RSS-Feed with URL '{}' received a HTTP-Error while requesting the feed, continuing...", rss.url));
+          time::sleep(sleep).await;
+          continue;
+        }
+
+        let rss_response = rss_response.unwrap();
+
+        // Save newest last modified header, so we can maybe detect changes next iteration
+        if let Some(last_modified_header) = rss_response.headers().get("Last-Modified") {
+          if let Ok(inner_last_modified) = last_modified_header.to_str() {
+            last_modified = Some(inner_last_modified.to_string());
+          } else {
+            last_modified = None;
+          }
+        }
+
+        // Don't need to go further since we already know its not modified or has errors (who is we btw?)
+        if rss_response.status() == StatusCode::NOT_MODIFIED {
+          time::sleep(sleep).await;
+          continue;
+        }
+
+        if !rss_response.status().is_success() {
+          log_warning(format!("RSS-Feed with URL '{}' received a unhandled HTTP-Error status while requesting the feed, continuing...", rss.url));
+          time::sleep(sleep).await;
+          continue;
+        }
+
+        let rss_content = rss_response.bytes().await;
+
+        if rss_content.is_err() {
+          log_warning(format!("RSS-Feed with URL '{}' doesn't provide any data, continuing...", rss.url));
           time::sleep(sleep).await;
           continue;
         }
@@ -87,7 +128,21 @@ async fn main() -> () {
           send_discord_webhook(&rss.discord.clone().unwrap(), &channel, &posts).await;
         }
 
-        time::sleep(Duration::from_millis(rss.interval)).await;
+        sleep = Duration::from_secs(
+          rss
+            .interval
+            .unwrap_or(
+              rss_channel
+                .ttl
+                .map(|ttl| ttl.parse().unwrap_or(DEFAULT_INTERVAL)
+              ).unwrap_or(DEFAULT_INTERVAL)
+            )
+        );
+
+        let duration = start_time.elapsed();
+        let duration_diff = sleep.saturating_sub(duration);
+
+        time::sleep(duration_diff).await;
       }
     });
   }
