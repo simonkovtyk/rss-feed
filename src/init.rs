@@ -3,10 +3,11 @@ use sqlx::{Pool, Postgres};
 pub async fn init_db (pool: &Pool<Postgres>) {
   sqlx::query("
     CREATE TABLE IF NOT EXISTS public.channels (
-      id bigserial NOT NULL,
       name text NULL,
+      checksum varchar NOT NULL,
+      id bigserial NOT NULL,
       image_url text NULL,
-      checksum varchar NOT NULL
+      CONSTRAINT channels_pk PRIMARY KEY (id)
     );
   ")
     .fetch_optional(pool)
@@ -22,6 +23,7 @@ pub async fn init_db (pool: &Pool<Postgres>) {
       checksum varchar NOT NULL,
       link text NULL,
       channel_id bigserial NOT NULL,
+      CONSTRAINT posts_pk PRIMARY KEY (id),
       CONSTRAINT posts_channel_fk FOREIGN KEY (channel_id)
         REFERENCES public.channels (id)
     );
