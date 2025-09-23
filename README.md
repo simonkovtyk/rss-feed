@@ -35,7 +35,7 @@ First, you need a build either from the [releases](../../releases/latest) or by 
 
 A PostgreSQL Database is also required.
 
-Feeder will take care of the database and creates it for you, so no maintainance needed.
+Feeder will take care of the database and creates everything in there for you, so no maintainance needed.
 
 ## Usage
 ### Configuration
